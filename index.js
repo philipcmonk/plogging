@@ -42,12 +42,49 @@ var verbs = new Set();
 var nouns = new Set();
 
 ////////////////////////////////////////////////////////
+// Mod                                                //
+////////////////////////////////////////////////////////
+
+// Modifier of any sort.  Usually an adpositional phrase.
+function Mod(tag, value) {
+  // A tag, usually a preposition, for this modifier.
+  // 
+  // Always a string.  The null string is interpreted to
+  // mean "direct object".
+  this.tag = tag;
+
+  // The value of the modifier.  Can be rich content.
+  this.value = value;
+}
+
+// Factory method to load a mod from json
+function loadMod(jon) {
+  return new Mod(jon.tag, jon.value);
+}
+
+Mod.prototype.toString = function() {
+  return (this.tag ? this.tag + ' ' : '') + this.value.toString();
+}
+
+Mod.prototype.toJson = function() {
+  return {
+    tag:   this.tag,
+    value: this.value
+  };
+}
+
+Mod.prototype.toHtml = function() {
+  return this.toString();
+}
+
+////////////////////////////////////////////////////////
 // Fact                                               //
 ////////////////////////////////////////////////////////
 
-function Fact(subject, verb, uuid) {
+function Fact(subject, verb, mods, uuid) {
   this.verb = verb;
   this.subject = subject;
+  this.mods = mods
   this.uuid = uuid || uuidGen.v4();
 
   if ( !verbs.has(this.verb) ) {
@@ -61,15 +98,25 @@ function Fact(subject, verb, uuid) {
   }
 };
 
+// Factory method to load a fact from json.
+function loadFact(jon) {
+  return new Fact(jon.subject, jon.verb, jon.mods.map(loadMod), jon.uuid);
+}
+
 Fact.prototype.toString = function() {
-  return this.subject + ' ' + this.verb + '.';
+  var modString = this.mods.map(function(mod) {
+    return mod.toString();
+  }).join(' ');
+
+  return this.subject + ' ' + this.verb + modString + '.';
 }
 
 Fact.prototype.toJson = function() {
   return {
     subject: this.subject,
-    verb: this.verb,
-    uuid: this.uuid
+    verb:    this.verb,
+    mods:    this.mods.toJson(),
+    uuid:    this.uuid
   };
 }
 
@@ -93,8 +140,13 @@ function Facts(facts) {
   this.facts = facts || [];
 }
 
-Facts.prototype.push = function(subject, verb) {
-  this.facts.push(new Fact(subject, verb));
+// Factory method to load facts from json
+function loadFacts(jon) {
+  return new Facts(jon.map(loadFact));
+}
+
+Facts.prototype.push = function(subject, verb, mods) {
+  this.facts.push(new Fact(subject, verb, mods));
 };
 
 Facts.prototype.remove = function(uuid) {
@@ -140,14 +192,7 @@ function loadStore(cb) {
       cb(new Facts());
     }
     else {
-      var factList = JSON.parse(data.toString()).map(function(fact) {
-        return new Fact(fact.subject, fact.verb)
-      });
-      var facts = new Facts(factList);
-    
-      // XX sanity check
-    
-      cb(facts);
+      cb(loadFacts(JSON.parse(data.toString())));
     }
   });
 }
