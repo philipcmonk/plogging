@@ -20,7 +20,8 @@ log.level(bunyan.INFO);
 var express = require('express');
 var bodyParser = require('body-parser');
 var app = express();
-app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser());
+//app.use(bodyParser.urlencoded({extended: true}));
 
 var uuidGen = require('node-uuid');
 
@@ -28,6 +29,7 @@ var uuidGen = require('node-uuid');
 // Set                                                //
 ////////////////////////////////////////////////////////
 
+// XX not currently used
 Set.prototype.toString = function() {
   var res = '';
   this.forEach(function(val) {
@@ -37,9 +39,6 @@ Set.prototype.toString = function() {
   return '[' + res.slice(0,-2) + ']';
   // return Array.from(this.values()).toString();
 };
-
-var verbs = new Set();
-var nouns = new Set();
 
 ////////////////////////////////////////////////////////
 // Mod                                                //
@@ -58,8 +57,8 @@ function Mod(tag, value) {
 }
 
 // Factory method to load a mod from json
-function loadMod(jon) {
-  return new Mod(jon.tag, jon.value);
+function loadMod(json) {
+  return new Mod(json.tag, json.value);
 }
 
 Mod.prototype.toString = function() {
@@ -86,25 +85,15 @@ function Fact(subject, verb, mods, uuid) {
   this.subject = subject;
   this.mods = mods
   this.uuid = uuid || uuidGen.v4();
-
-  if ( !verbs.has(this.verb) ) {
-    log.info('added verb ' + this.verb);
-    verbs.add(this.verb);
-  }
-
-  if ( !nouns.has(this.subject) ) {
-    log.info('added noun ' + this.subject);
-    nouns.add(this.subject);
-  }
 };
 
 // Factory method to load a fact from json.
-function loadFact(jon) {
-  return new Fact(jon.subject, jon.verb, jon.mods.map(loadMod), jon.uuid);
+function loadFact(json) {
+  return new Fact(json.subject, json.verb, json.mods.map(loadMod), json.uuid);
 }
 
 Fact.prototype.toString = function() {
-  var modString = this.mods.map(function(mod) {
+  var modString = this.mods.length === 0 ? '' : ' ' + this.mods.map(function(mod) {
     return mod.toString();
   }).join(' ');
 
@@ -115,15 +104,15 @@ Fact.prototype.toJson = function() {
   return {
     subject: this.subject,
     verb:    this.verb,
-    mods:    this.mods.toJson(),
+    mods:    this.mods.map(function(mod) { return mod.toJson(); }),
     uuid:    this.uuid
   };
 }
 
 Fact.prototype.deleteHtml = function() {
   return '' +
-    '<form action="/" method="POST" class="delete-form">\n' +
-    '<input type="hidden" name="uuid" value="' + this.uuid + '" />\n' +
+    '<form action="/delete" method="POST" class="delete-form">\n' +
+    '<input class="delete-uuid" type="hidden" name="uuid" value="' + this.uuid + '" />\n' +
     '<input class="delete-button" type="submit" value="X" />\n' +
     '</form>'
 }
@@ -141,8 +130,8 @@ function Facts(facts) {
 }
 
 // Factory method to load facts from json
-function loadFacts(jon) {
-  return new Facts(jon.map(loadFact));
+function loadFacts(json) {
+  return new Facts(json.map(loadFact));
 }
 
 Facts.prototype.push = function(subject, verb, mods) {
@@ -219,17 +208,10 @@ function mainHtml(facts) {
   return '' +
     '<html>\n' +
     '<head>\n' +
-    '<meta name="viewport" content="width=device-width" />' +
-    '<style>\n' +
-    'body { max-width: 50rem; margin: auto; background-color: #FFFFF0; font-size: 1.2em }' +
-    '.delete-form { display: inline; }' +
-    '.delete-button { border: none; }' +
-    '#add-form { overflow: hidden; }' +
-    '.add-line { float: left; border: none; font-size: 1.3rem }' +
-    '#subject { width: 33%; background-color: #E0FFFF; }' +
-    '#verb { width: 33%; background-color: #FFE0FF; }' +
-    '#add { width: 34%;}' +
-    '</style>\n' +
+    '<meta name="viewport" content="width=device-width" />\n' +
+    '<script src="/jquery-3.1.0.js"></script>\n' +
+    '<script src="/main.js"></script>\n' +
+    '<link rel="stylesheet" type="text/css" href="main.css" />\n' +
     '</head>\n' +
     '<body>\n' +
     '<p>Hallo!</p>\n' +
@@ -245,6 +227,8 @@ function addFactoidHtml() {
     '<form id="add-form" action="/" method="POST">\n' +
     '<input class="add-line" id="subject" type="text" name="subject" placeholder="our hero" required autocapitalize="none"/>\n' +
     '<input class="add-line" id="verb" type="text" name="verb" placeholder="awoke" required autocapitalize="none" />\n' +
+    '<br />\n' +
+    '<div id="mods"></div>\n' +
     '<input class="add-line" id="add" type="submit" value="Add" />\n' +
     '</form>\n'
 }
@@ -262,17 +246,8 @@ function main() {
       res.send(mainHtml(facts));
     });
     
-    app.post('/', function(req, res) {
-      log.info(req.body);
-      if ( 'uuid' in req.body ) {
-        facts.remove(req.body.uuid);
-      }
-      else if ( 'subject' in req.body && 'verb' in req.body ) {
-        facts.push(req.body.subject, req.body.verb);
-      }
-      else {
-        log.error('bad post request', req.body);
-      }
+    app.post('/add', function(req, res) {
+      facts.push(req.body.subject, req.body.verb, req.body.mods.map(loadMod));
     
       // there's obviously a race condition here, if
       // another request comes in while we're writing
@@ -281,10 +256,24 @@ function main() {
       // should use an actual database or something.
 
       writeStore(facts, function() {
-        res.send(mainHtml(facts));
+        res.send(JSON.stringify({ok: true}));
+      });
+    });
+
+    app.post('/delete', function(req, res) {
+      log.info(req.body);
+      facts.remove(req.body.uuid);
+
+      // see /add for race condition disclaimer
+
+      writeStore(facts, function() {
+        res.send(JSON.stringify({ok: true}));
       });
     });
     
+
+    app.use(express.static('public'));
+
     app.listen(3000, function() {
       log.info('beep... beep...');
     });

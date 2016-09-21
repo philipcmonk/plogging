@@ -1,0 +1,46 @@
+body {
+  max-width: 50rem;
+  margin: auto;
+  background-color: #FFFFF0;
+  font-size: 1.2rem;
+}
+
+.delete-form {
+  display: inline;
+}
+
+.delete-button {
+  border: none;
+}
+
+#add-form {
+  overflow: hidden;
+}
+
+.add-line {
+  float: left;
+  border: none;
+  font-size: 1.3rem;
+}
+
+#subject {
+  width: 50%;
+  background-color: #E0FFFF;
+}
+
+#verb {
+  width: 50%;
+  background-color: #FFE0FF;
+}
+
+.tag {
+  width: 50%;
+}
+
+.value {
+  width: 50%;
+}
+
+#add {
+  width: 100%;
+}
