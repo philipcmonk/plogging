@@ -25,20 +25,7 @@ app.use(bodyParser());
 
 var uuidGen = require('node-uuid');
 
-////////////////////////////////////////////////////////
-// Set                                                //
-////////////////////////////////////////////////////////
-
-// XX not currently used
-Set.prototype.toString = function() {
-  var res = '';
-  this.forEach(function(val) {
-    log.info(val);
-    res = res + val + ', ';
-  });
-  return '[' + res.slice(0,-2) + ']';
-  // return Array.from(this.values()).toString();
-};
+var sugar = require('sugar');
 
 ////////////////////////////////////////////////////////
 // Mod                                                //
@@ -234,6 +221,23 @@ function addFactoidHtml() {
 }
 
 ////////////////////////////////////////////////////////
+// transform                                          //
+////////////////////////////////////////////////////////
+
+function transform(value) {
+  var date = new sugar.Date(value);
+  log.info(date.isValid());
+  if ( date.isValid().raw ) {
+    log.info(true);
+    return date.full().raw;
+  }
+  else {
+    log.info(false);
+    return value;
+  }
+}
+
+////////////////////////////////////////////////////////
 // main                                               //
 ////////////////////////////////////////////////////////
 
@@ -242,7 +246,6 @@ function main() {
     log.info('loaded facts', facts.toString());
 
     app.get('/', function(req, res) {
-      log.info(mainHtml(facts));
       res.send(mainHtml(facts));
     });
     
@@ -271,6 +274,11 @@ function main() {
       });
     });
     
+    app.post('/transform', function(req, res) {
+      log.info('tranforming ' + req.body.id + ':  ' + req.body.value);
+
+      res.send(JSON.stringify({id: req.body.id, value: transform(req.body.value)}));
+    });
 
     app.use(express.static('public'));
 

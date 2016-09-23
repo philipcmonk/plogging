@@ -2,18 +2,44 @@ $(function() {
   $('#subject')[0].focus();
 
   $('#add-form').on('keydown', '#verb', addMod);
+  $('#verb').on('blur', transform);
   $('#add-form').submit(submitAdd);
   $('.delete-form').submit(submitDelete);
 });
 
 var modCount = 0;
 
+function nextType(type) {
+  return types[(types.indexOf(type) + 1) % types.length];
+}
+
 function addMod(e) {
   if ( e.which === 9 && !e.shiftKey ) {
-    $('#mods').append(createModLine(modCount));
-    $('#mod-' + modCount).on('keydown', '#value-' + modCount, addMod);
-    modCount++;
+    var last;
+    var lastest;
+    if ( modCount === 0 ) {
+      last = $('#add-form');
+      lastest = last.children('#verb');
+    }
+    else {
+      last = $('#mod-' + (modCount - 1));
+      lastest = last.children('#value-' + (modCount - 1));
+    }
+
+    // if ( modCount === 0 || $(this).attr('id') === 'value-' + (modCount-1) ) {
+      $('#mods').append(createModLine(modCount));
+      $('#mod-' + modCount).on('keydown', '#value-' + modCount, addMod);
+      $('#value-' + modCount).on('blur', transform);
+      modCount++;
+      last.off('keydown');
+    // }
   }
+}
+
+function transform(e) {
+  $.post('/transform', {id: $(this).attr('id'), value: $(this).val()}, function(json) {
+    $('#' + json.id).val(json.value);
+  }, 'json');
 }
 
 function createModLine(modCount) {
@@ -27,7 +53,7 @@ function createTag(modCount) {
   var id = '"tag-' + modCount + '"'
   return '<input class="add-line tag" id=' + id +
          'type="text" name=' + id +
-         ' placeholder="for" required autocapitalize="none">\n';
+         ' placeholder="for" autocapitalize="none">\n';
 }
 
 function createValue(modCount) {
