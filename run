@@ -1,3 +1,7 @@
 #!/bin/bash
 
+if [ ! -d "node-bunyan/bin/bunyan" ]; then
+  git clone https://github.com/trentm/node-bunyan
+fi
+
 node index.js | node-bunyan/bin/bunyan
