@@ -220,6 +220,10 @@ function addFactoidHtml() {
     '</form>\n'
 }
 
+function mainJson(facts) {
+  return facts.toJson();
+}
+
 ////////////////////////////////////////////////////////
 // transform                                          //
 ////////////////////////////////////////////////////////
@@ -247,6 +251,10 @@ function main() {
 
     app.get('/', function(req, res) {
       res.send(mainHtml(facts));
+    });
+
+    app.get('/state', function(req, res) {
+      res.send(JSON.stringify(mainJson(facts)));
     });
     
     app.post('/add', function(req, res) {
