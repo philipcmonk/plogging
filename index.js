@@ -258,7 +258,7 @@ function main() {
     });
     
     app.post('/add', function(req, res) {
-      facts.push(req.body.subject, req.body.verb, req.body.mods.map(loadMod));
+      facts.push(req.body.subject, req.body.verb, (req.body.mods ? req.body.mods : []).map(loadMod));
     
       // there's obviously a race condition here, if
       // another request comes in while we're writing
