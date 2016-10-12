@@ -1,7 +1,7 @@
 {
   "name": "life",
   "version": "1.0.0",
-  "description": "lifelogging with an eye to worldbuilding",
+  "description": "decentralized personal logging with a focus on the narratively interesting",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
